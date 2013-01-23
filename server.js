@@ -1,5 +1,5 @@
 HOST = null;
-PORT = 8088;
+PORT = 8765;
 DEBUG = false;
 var NOT_FOUND = "Uh oh -- no file found...\n";
 
@@ -75,12 +75,18 @@ function updateSkill (res) {
 			console.log(stdout);
 			var rep = JSON.parse(stdout);
 			console.log(rep);
+			
+			
+			// modification de l'objet "joueurs"
 			joueurs[res.g1] = rep.r1;
 			joueurs[res.g2] = rep.r2;
 			joueurs[res.p1] = rep.r3;
 			joueurs[res.p2] = rep.r4;
 			
 			console.log(joueurs);
+			
+			//écrasement des fichiers JSON avec les objets actualisés
+			fs.writeFile('matchs.json', JSON.stringify(matchs));
 			fs.writeFile('joueurs.json', JSON.stringify(joueurs));
 			
 			if (error !== null) {
@@ -103,8 +109,14 @@ getMap['/submit.html'] = function (req, res) {
 		req.on('end', function () {
 			var POST = qs.parse(body);
 			console.log(joueurs);
-			matchs.push({"m":POST, "time":new Date()});
-			fs.writeFile('matchs.json', JSON.stringify(matchs));
+			
+			//historisation du fichier joueurs.json avant toute modif
+			fs.writeFile('joueurs.'+matchs.length+'.json', JSON.stringify(joueurs));
+			
+			//ajout du dernier match
+			matchs.push({"m":POST, "time":new Date(), "id":matchs.length});
+			
+			//update des BASS
 			updateSkill(POST);
 			
 			(function (code, body) {
@@ -132,33 +144,28 @@ getMap['/matchs.json'] = function(req, res) {
 	});
 };
 getMap['/joueurs.json'] = function(req, res) {
+	var body;
+	
+	if(req.url.indexOf("?")>-1) {
+		var ver = req.url.split("?")[1];
+		console.log("loading joueurs."+ver+".json");
+		var j = require("./joueurs."+ver+".json");
+		body = JSON.stringify(j);
+	} else {
+		body = JSON.stringify(joueurs)
+	}
 	
 	req.on('end', function () {
 		res.writeHead(200, { "Content-Type": "text/json"
-			  , "Content-Length": JSON.stringify(joueurs).length
+			  , "Content-Length": body.length
 			  });
-		res.end(JSON.stringify(joueurs));
+		res.end(body);
 	});
 };
 
 var server = http.createServer(function(req, res) {
   if (req.method === "GET" || req.method === "POST" || req.method === "HEAD") {
     var handler = getMap[url.parse(req.url).pathname] || notFound;
-
-    res.simpleText = function (code, body) {
-      res.writeHead(code, { "Content-Type": "text/plain"
-                          , "Content-Length": body.length
-                          });
-      res.end(body);
-    };
-
-    res.simpleJSON = function (code, obj) {
-      var body = new Buffer(JSON.stringify(obj));
-      res.writeHead(code, { "Content-Type": "text/json"
-                          , "Content-Length": body.length
-                          });
-      res.end(body);
-    };
 
     handler(req, res);
   }
