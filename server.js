@@ -125,23 +125,19 @@ getMap['/classement.html'] = staticHandler("classement.html");
 getMap['/matchs.json'] = function(req, res) {
 	
 	req.on('end', function () {
-		(function () {
-		  res.writeHead(200, { "Content-Type": "text/json"
+		res.writeHead(200, { "Content-Type": "text/json"
 			  , "Content-Length": JSON.stringify(matchs).length
 			  });
-		  res.end(JSON.stringify(matchs));
-		})();
+		res.end(JSON.stringify(matchs));
 	});
 };
 getMap['/joueurs.json'] = function(req, res) {
 	
 	req.on('end', function () {
-		(function () {
-		  res.writeHead(200, { "Content-Type": "text/json"
+		res.writeHead(200, { "Content-Type": "text/json"
 			  , "Content-Length": JSON.stringify(joueurs).length
 			  });
-		  res.end(JSON.stringify(joueurs));
-		})();
+		res.end(JSON.stringify(joueurs));
 	});
 };
 
