@@ -16,12 +16,14 @@
 				function compare(a, b) {
 					return b[1] - a[1];
 				}
-				console.log(data);
+				
 				for(var i in data) {
 					classement.push([i, Math.ceil(data[i]['mu'] - data[i]['sigma']*2)]);
 				}
 				
 				var ranks = classement.sort(compare);
+				
+				console.log(classement);
 				var res = "<table><tr><td>#</td><td>joueur</td><td>BASS</td></tr>";
 				for (var i in ranks)
 					res += "<tr><td>"+(parseInt(i)+1)+"</td><td>"+ ranks[i][0] + "</td><td>" + ranks[i][1] + "</td></tr>";
