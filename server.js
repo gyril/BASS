@@ -20,6 +20,7 @@ var fs = require("fs");
 var readFile = fs.readFile;
 var joueurs = require('./joueurs.json');
 var matchs = require('./matchs.json');
+var historique = require('./historique.json');
 var exec = require('child_process').exec,
     child;
 
@@ -28,9 +29,26 @@ function extname (path) {
   return index < 0 ? "" : path.substring(index);
 }
 
+function mimeType(file) {
+	switch(extname(file)) {
+		case ".json":
+			return "text/json";
+			break;		
+		case ".js":
+			return "text/javascript";
+			break;
+		case ".html":
+			return "text/html";
+			break;
+		default:
+			return "text/plain";
+			break;
+	}
+}
+
 function staticHandler(filename) {
   var body, headers;
-  var content_type = extname(filename)=="json" ? "text/json" : "text/html";
+  var content_type = mimeType(filename);
 
   function loadResponseData(callback) {
     if (body && headers && !DEBUG) {
@@ -68,6 +86,19 @@ function updateSkill (res) {
 		r3 = joueurs[res.p1],
 		r4 = joueurs[res.p2];
 		
+		//update de l'historique
+		function hist(joueur, score) {
+			try {
+				historique[joueur].push(score);
+			} catch(e) {
+				historique[joueur] = [score];
+			}
+		}
+		hist(res.g1, r1);
+		hist(res.g2, r2);
+		hist(res.p1, r3);
+		hist(res.p2, r4);
+		
 		var script = 'python ts/run.py '+r1.mu+' '+r1.sigma+' '+r2.mu+' '+r2.sigma+' '+r3.mu+' '+r3.sigma+' '+r4.mu+' '+r4.sigma;
 			
 		child = exec(script,
@@ -88,6 +119,7 @@ function updateSkill (res) {
 			//écrasement des fichiers JSON avec les objets actualisés
 			fs.writeFile('matchs.json', JSON.stringify(matchs));
 			fs.writeFile('joueurs.json', JSON.stringify(joueurs));
+			fs.writeFile('historique.json', JSON.stringify(historique));
 			
 			if (error !== null) {
 			  console.log('exec error: ' + error);
@@ -143,13 +175,24 @@ getMap['/matchs.json'] = function(req, res) {
 		res.end(JSON.stringify(matchs));
 	});
 };
+
+getMap['/historique.json'] = function(req, res) {
+	
+	req.on('end', function () {
+		res.writeHead(200, { "Content-Type": "text/json"
+			  , "Content-Length": JSON.stringify(historique).length
+			  });
+		res.end(JSON.stringify(historique));
+	});
+};
+
 getMap['/joueurs.json'] = function(req, res) {
 	var body;
 	
 	if(req.url.indexOf("?")>-1) {
 		var ver = req.url.split("?")[1];
 		console.log("loading joueurs."+ver+".json");
-		var j = require("./joueurs."+ver+".json");
+		var j = loadJSON("./joueurs."+ver+".json");
 		body = JSON.stringify(j);
 	} else {
 		body = JSON.stringify(joueurs)
@@ -162,6 +205,10 @@ getMap['/joueurs.json'] = function(req, res) {
 		res.end(body);
 	});
 };
+
+function loadJSON(file) {
+	return fs.existsSync(file) ? require(file) : {};
+}
 
 var server = http.createServer(function(req, res) {
   if (req.method === "GET" || req.method === "POST" || req.method === "HEAD") {

@@ -1,20 +1,167 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-"http://www.w3.org/TR/html4/strict.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
-	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-		<title>Leaderboard</title>
-		<meta name="author" content="martin" />
-		<script type="text/javascript" src="js/d3.v2.js"> </script>
-		<!-- Date: 2013-01-23 -->
-	</head>
-	<body>
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Classement</title>
+		<script src="http://d3js.org/d3.v2.js"></script>
+		<style>
 		
-	<div class="container"></div>
-	
-	<script type="text/javascript" src="js/leaderboard.js"> </script>
+		.line {
+		
+		fill:none;
+		stroke-width:2px;
+		stroke:steelblue;
+		
+		}
+		
+		.axis path{
+			fill: none;
+			stroke: #000;
+			shape-rendering: crispEdges;
+				}	
 
+		.axis line{
+
+		fill:none;
+
+		}
+
+		.axis text{
+
+		fill:none;
+
+		}
+		
+		.joueur {
+		
+		margin-bottom:5px;
+		
+		}
+
+
+
+		</style>
+		
+		
+    </head>
+    <body>
+		<div id="classement" style="margin-left:auto; width:400px; margin-right:auto;">
+		</div>
+		<a href="resultat.html">Ajouter un résultat</a>
+		<script type="text/javascript">
+		
+		
+// vars
+
+	var width = 400,
+		height = 800;
+		
+		
+d3.json("joueurs.json", function(joueurs) {
+
+// Prepare data
+				var classement = [];
+				function compare(a, b) {
+					return b[1] - a[1];
+				}
+
+				for(var i in joueurs) {
+					classement.push([i, Math.ceil(joueurs[i]['mu'] - joueurs[i]['sigma']*2)]);
+				}
+				
+				var ranks = classement.sort(compare);
+
+				
+// Create container per player
+
+var container = d3.select("#classement").append("svg:svg")
+							.attr("width",width)
+							.attr("height",height);
+
+var joueurContainer = container.selectAll("g")
+				.data(ranks)
+			  .enter().append("svg:g")
+			  .attr("transform",function(d,i) {return "translate(10,"+(i * (height/(ranks.length))*0.9 + 50) +")";})
+			  .attr("class","joueur");
+
+// Append rank
+
+joueurContainer.append("svg:text")
+	.text(function(d, i) {return i + 1;})
+	.attr("x",10);
+			  
+// Append name
+			  
+joueurContainer.append("svg:text")
+	.text(function(d) {return d[0];})
+	.attr("x",50);
+	
+// Append last BASS
+			  
+joueurContainer.append("svg:text")
+	.text(function(d) {return d[1];})
+	.attr("x",120);
+	
+// append graph history
+
+	d3.json("historique.json",function(historique) {
+
+var graphJoueur = joueurContainer
+					.append("svg:g")
+					.attr("transform", "translate(180,"+"-"+height/ranks.length/2+")");
+	
+// Scale & line
+	
+	var maxMatch = [],
+		BASS = [];
+	
+for (var i in historique) {
+	maxMatch.push(historique[i].length);
+	BASS.push(historique[i].map(function(d) {return d.mu - d.sigma*2;} ));
+}
+
+	var maxBASS = d3.max(d3.merge(BASS)),
+		minBASS = d3.min(d3.merge(BASS));
+
+var bassScale = d3.scale.linear().domain([minBASS,maxBASS]).range([height/ranks.length*0.7, 0]),
+	widthScale = d3.scale.linear().domain([0,d3.max(maxMatch)]).range([1,width/2]),
+	
+	line = d3.svg.line()
+		.x(function(d,i) { return widthScale(i); })
+		.y(function(d) {return d!=0 ? bassScale(d.mu - d.sigma*2) :0 ;})
+		.interpolate("basis"),
+	
+     yAxis = d3.svg.axis()
+		.scale(bassScale)
+		.orient("left");
+	
+graphJoueur.append("svg:path")
+		.datum(function(d) {return historique[d[0]]===undefined ? [0] : historique[d[0]]  ;})
+		.attr("d", line)
+		.attr("class","line");
+		
+graphJoueur.selectAll("circle")
+		.data(function(d) {return historique[d[0]]===undefined ? [0] : historique[d[0]]  ;})
+	.enter().append("svg:circle")
+		.attr("cx", function(d, i) {return widthScale(i);})
+		.attr("cy", function(d) {return d!=0 ? bassScale(d.mu - d.sigma*2) :0 ;})
+		.attr("r",5)
+		.attr("fill","steelblue")
+		.attr("opacity",0)
+		.on("mouseover",function() {d3.select(this).attr("opacity",1);})
+		.on("mouseout",function() {d3.select(this).attr("opacity",0);})
+		.attr("title",function(d) {return d!=0 ? d.mu - d.sigma*2 :0 ;})
+		
+graphJoueur.append("g")
+	.attr("transform","translate(-10,0)")
+	.call(yAxis)
+	.attr("class","y axis");
+	
+	});
+
+
+			});
+		</script>
 	</body>
 </html>
-
